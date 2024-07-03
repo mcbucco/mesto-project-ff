@@ -7,24 +7,27 @@ export function createCard(name, link, description, deleteFunction, clickFunctio
   const deleteCardButton = cardSample.querySelector('.card__delete-button');
   const likeButton = cardSample.querySelector('.card__like-button');
   const cardImage = cardSample.querySelector('.card__image');
-
+  const card = cardSample.querySelector('.card');
+  
   cardSample.querySelector('.card__title').textContent = name;
   cardImage.src = link;
   cardImage.alt = description;
   
-  deleteCardButton.addEventListener('click', deleteFunction);
-  cardImage.addEventListener('click', clickFunction)
+  cardImage.addEventListener('click', () => clickFunction({name, link})); 
   
-  likeButton.addEventListener('click', likeFunction);
+  likeButton.addEventListener('click', () => likeFunction(likeButton));
+  
+  deleteCardButton.addEventListener('click', () => deleteFunction(card));
 
   return cardSample;
 }
 
 // @todo: Функция удаления карточки
-export function deleteCard(evt) {
-  evt.target.parentElement.remove();
+export function deleteCard(card) { 
+  card.remove();
 }
 
-export function likeCard(evt) {
-  evt.target.classList.toggle('card__like-button_is-active');
+export function likeCard(likeButton) {
+  likeButton.classList.toggle('card__like-button_is-active');
+  // evt.target.classList.toggle('card__like-button_is-active');
 }
