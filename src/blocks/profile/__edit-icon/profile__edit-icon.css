@@ -1,0 +1,7 @@
+.profile__edit-icon {
+  fill: transparent;
+}
+
+.profile__edit-icon:hover {
+  fill: white;
+}
