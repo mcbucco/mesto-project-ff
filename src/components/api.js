@@ -33,9 +33,7 @@ export const editProfile = (newName, newAbout) => {
         name: newName,
         about: newAbout
       })
-  })
-  .then(newData => console.log(`profile updated succesfull, new name / about: ${newData.name}, ${newData.about}`))
-  .catch((err) => console.log(err));
+  });
 }
 
 export const addNewCard = (cardName, cardLink) => {
@@ -53,8 +51,7 @@ export const removeCard = (cardId) => {
   return getDataPromise(`${config.baseUrl}/cards/${cardId}`, {
     method: 'DELETE',
     headers: config.headers,
-  })
-  .then(console.log(`${cardId} deleted`));
+  });
 }
 
 export const addLike = (cardId) => {

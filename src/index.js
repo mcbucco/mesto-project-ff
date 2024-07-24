@@ -2,7 +2,7 @@ import './pages/index.css';
 import { createCard, deleteCard, likeCard } from './components/card.js';
 import { openModal, closeModal, setCloseModalByClickListeners } from './components/modal.js';
 import { enableValidation, clearValidation } from './components/validation.js';
-import { getUserInfo, getCards, editProfile, addNewCard, updateAvatar } from './components/api.js';
+import { getCards, editProfile, addNewCard, updateAvatar } from './components/api.js';
 
 // @todo: DOM узлы
 const profileTitle = document.querySelector('.profile__title');
@@ -34,13 +34,15 @@ const popupImageTitle = popupImage.querySelector('.popup__caption');
 
 const popupList = document.querySelectorAll('.popup');
 
-const renderSaving = (popup, form) => {
-  const buttonElement = form.querySelector('.button');
-  const buttonOldText = buttonElement.textContent;
-  buttonElement.textContent = 'Сохранение...';
+const renderSaving = (isOn, formElement) => {
+  const buttonElement = formElement.querySelector('.button');
+
+  isOn ? buttonElement.textContent = 'Сохранение...': buttonElement.textContent = 'Сохранить';
+}
+
+function closeAndReset(popup, formElement) {
   closeModal(popup);
-  form.reset();
-  buttonElement.textContent = buttonOldText;
+  formElement.reset();
 }
 
 enableValidation({
@@ -55,23 +57,42 @@ enableValidation({
 function handleUpdateProfilePhotoFormSubmit(evt) {
   evt.preventDefault();
   const newProfilePhotoLink = editProfilePhotoInput.value;
+  renderSaving(true, editProfilePhotoForm);
   updateAvatar(newProfilePhotoLink)
     .then(cardData => {
       profilePhoto.style.backgroundImage = `url('${cardData.avatar}')`;
-      console.log(`new avatar id is ${cardData.avatar}`);
+      closeAndReset(editProfilePhotoPopup, editProfilePhotoForm);
+      console.log(`new avatar url is ${cardData.avatar}`);
     })
-    .catch((err) => console.log(err));
-  renderSaving(editProfilePhotoPopup, editProfilePhotoForm);
+    .catch((err) => console.log(err))
+    .finally(() => renderSaving(false, editProfilePhotoForm));
 }
 
 function handleEditProfileFormSubmit (evt) {
   evt.preventDefault();
   const newName = editNameInput.value;
   const newAbout = editOccupationInput.value;
-  profileTitle.textContent = newName;
-  profileOccupation.textContent = newAbout;
+  renderSaving(true, editProfileForm);
   editProfile(newName, newAbout)
-  renderSaving(editProfilePopup, editProfileForm);
+    .then(newData => {
+      profileTitle.textContent = newData.name;
+      profileOccupation.textContent = newData.about;
+      closeAndReset(editProfilePopup, editProfileForm);
+      console.log(`profile updated succesfull, new name / about: ${newData.name} / ${newData.about}`)
+    })
+    .catch((err) => console.log(err))
+    .finally(() => renderSaving(false, editProfileForm)); 
+}
+
+function handleAddPlaceButtonClick() {
+  openModal(addCardPopup);
+  clearValidation(addCardPopup, {
+    inputSelector: '.popup__input',
+    submitButtonSelector: '.popup__button',
+    inactiveButtonClass: 'popup__button_disabled',
+    inputErrorClass: 'popup__input_type_error',
+    errorClass: 'popup__error_visible'
+  });
 }
 
 function handleAddPlaceFormSubmit(evt) {
@@ -79,35 +100,50 @@ function handleAddPlaceFormSubmit(evt) {
   const newCardName = addPlaceNameInput.value;
   const newCardLink = addPlaceImgLinkInput.value;
   
+  renderSaving(true, addPlaceForm);
   addNewCard(newCardName, newCardLink)
   .then(cardItem => {
-    const card = createCard(true, false, cardItem._id, cardItem.name, cardItem.link, cardItem.name, cardItem.likes.length, deleteCard, openImagePopup, likeCard);
+    const cardData = {
+      isOwn: true,
+      isLiked: false,
+      cardId: cardItem._id,
+      name: cardItem.name,
+      link: cardItem.link,
+      description: cardItem.name,
+      likesQty: cardItem.likes.length,
+      deleteFunction: deleteCard,
+      openFunction: openImagePopup,
+      likeFunction: likeCard
+    }
+    const card = createCard(cardData);
     cardsContainer.prepend(card);
+    closeAndReset(addCardPopup, addPlaceForm)
     console.log(`${cardItem._id} added`);
   })
-  .catch((err) => console.log(err));
-  
-  const formElement = addCardPopup.querySelector('form');
-  clearValidation(formElement, {
+  .catch((err) => console.log(err))
+  .finally(() => renderSaving(false, addPlaceForm));
+}
+
+function handleEditProfilePhotoButtonClick() {
+  openModal(editProfilePhotoPopup);
+  clearValidation(editProfilePhotoForm, {
     inputSelector: '.popup__input',
     submitButtonSelector: '.popup__button',
     inactiveButtonClass: 'popup__button_disabled',
     inputErrorClass: 'popup__input_type_error',
     errorClass: 'popup__error_visible'
   });
-  renderSaving(addCardPopup, addPlaceForm);
 }
 
 function handleEditProfileButtonClick() {
-  const formElement = editProfilePopup.querySelector('form');
   openModal(editProfilePopup);
-  clearValidation(formElement, {
+  clearValidation(editProfileForm, {
     inputSelector: '.popup__input',
     submitButtonSelector: '.popup__button',
     inactiveButtonClass: 'popup__button_disabled',
     inputErrorClass: 'popup__input_type_error',
     errorClass: 'popup__error_visible'
-  })
+  });
   editNameInput.value = profileTitle.textContent;
   editOccupationInput.value = profileOccupation.textContent;
 }
@@ -119,46 +155,44 @@ function openImagePopup(cardData) {
   popupImageTitle.textContent = cardData.name;
 }
 
-
-getUserInfo()
-.then(cardData => {
-  profileTitle.textContent = cardData.name;
-  profileOccupation.textContent = cardData.about;
-  profilePhoto.style.backgroundImage = `url('${cardData.avatar}')`;
-})
-.catch((err) => console.log(err));
-
 // @todo: Вывести карточки на страницу
 getCards()
 .then(data => {
-  const userID = data[0]._id;
-  const cardsList = data[1];
+  const [userData, cardsList] = data;
   
+  profileTitle.textContent = userData.name;
+  profileOccupation.textContent = userData.about;
+  profilePhoto.style.backgroundImage = `url('${userData.avatar}')`;
+
   cardsList.forEach(cardItem => {
-    let isOwn = false, isLiked = false;
-    if (cardItem.owner._id == userID) {
-      isOwn = true;
-    }  
-    
-    const likesUsersIDs = cardItem.likes.map(likeObj => likeObj._id);
-    if (likesUsersIDs.includes(userID)) {
-      isLiked = true;
+    const isOwn = (cardItem.owner._id == userData._id);
+    const isLiked = cardItem.likes.some(
+      likeObj => likeObj._id == userData._id
+    );
+
+    const cardData = {
+      isOwn: isOwn,
+      isLiked: isLiked,
+      cardId: cardItem._id,
+      name: cardItem.name,
+      link: cardItem.link,
+      description: cardItem.name,
+      likesQty: cardItem.likes.length,
+      deleteFunction: deleteCard,
+      openFunction: openImagePopup,
+      likeFunction: likeCard
     }
 
-    cardsContainer.append(
-      createCard(isOwn, isLiked, cardItem._id, cardItem.name, cardItem.link, cardItem.name, cardItem.likes.length , deleteCard, openImagePopup, likeCard)
-    );
+    cardsContainer.append(createCard(cardData));
   })
 })
 .catch((err) => console.log(err));
 
-editProfilePhotoButton.addEventListener('click', () => openModal(editProfilePhotoPopup));
+editProfilePhotoButton.addEventListener('click', handleEditProfilePhotoButtonClick);
 
 editProfileButton.addEventListener('click', handleEditProfileButtonClick);
 
-addCardButton.addEventListener('click', () => {
-  openModal(addCardPopup);
-});
+addCardButton.addEventListener('click', handleAddPlaceButtonClick);
 
 editProfileForm.addEventListener('submit', handleEditProfileFormSubmit);
 

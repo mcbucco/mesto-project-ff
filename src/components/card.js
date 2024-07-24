@@ -4,32 +4,32 @@ import { removeCard, addLike, removeLike } from "./api";
 const cardTemplate = document.querySelector('#card-template').content;
 
 // @todo: Функция создания карточки
-export function createCard(isOwn, isLiked, cardId, name, link, description, likesQty, deleteFunction, clickFunction, likeFunction) {
+export function createCard(cardData) {
   const cardSample = cardTemplate.cloneNode(true);
   const deleteCardButton = cardSample.querySelector('.card__delete-button');
   const likeButton = cardSample.querySelector('.card__like-button');
   const likeCounter = cardSample.querySelector('.card__like-counter');
   const cardImage = cardSample.querySelector('.card__image');
   const card = cardSample.querySelector('.card');
-  const cardID = cardId;
+  const cardID = cardData.cardId;
   
-  cardSample.querySelector('.card__title').textContent = name;
-  cardImage.src = link;
-  cardImage.alt = description;
-  likeCounter.textContent = likesQty;
+  cardSample.querySelector('.card__title').textContent = cardData.name;
+  cardImage.src = cardData.link;
+  cardImage.alt = cardData.description;
+  likeCounter.textContent = cardData.likesQty;
   
-  cardImage.addEventListener('click', () => clickFunction({name, link})); 
+  cardImage.addEventListener('click', () => cardData.openFunction({name: cardData.name, link: cardData.link})); 
   
-  likeButton.addEventListener('click', () => likeFunction({likeButton, cardID, likeCounter}));
+  likeButton.addEventListener('click', () => cardData.likeFunction({likeButton, cardID, likeCounter}));
 
-  if (isOwn) {
-    deleteCardButton.addEventListener('click', () => deleteFunction({card, cardID}));
+  if (cardData.isOwn) {
+    deleteCardButton.addEventListener('click', () => cardData.deleteFunction({card, cardID}));
   }
   else {
     deleteCardButton.remove();
   }
 
-  if (isLiked) {
+  if (cardData.isLiked) {
     likeButton.classList.add('card__like-button_is-active');
   }
   return cardSample;
@@ -37,8 +37,12 @@ export function createCard(isOwn, isLiked, cardId, name, link, description, like
 
 // @todo: Функция удаления карточки
 export function deleteCard(cardData) { 
-  cardData.card.remove();
-  removeCard(cardData.cardID);
+  removeCard(cardData.cardID)
+    .then(() => {
+      cardData.card.remove();
+      console.log(`${cardData.cardID} deleted`);
+    })
+    .catch(error => console.log(`Ошибка: ${error}`));
 }
   
 export function likeCard(cardData) {
@@ -46,16 +50,19 @@ export function likeCard(cardData) {
     removeLike(cardData.cardID)
       .then(cardItem => {
         cardData.likeCounter.textContent = cardItem.likes.length;
+        cardData.likeButton.classList.toggle('card__like-button_is-active');
         console.log('disliked');
-    });
+      })
+      .catch(error => console.log(`Ошибка: ${error}`));
   }
   else
   {
     addLike(cardData.cardID)
       .then(cardItem => {
         cardData.likeCounter.textContent = cardItem.likes.length;
+        cardData.likeButton.classList.toggle('card__like-button_is-active');
         console.log('liked');
-    });;
+      })
+      .catch(error => console.log(`Ошибка: ${error}`));
   }
-  cardData.likeButton.classList.toggle('card__like-button_is-active');
 }
